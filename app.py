@@ -4,12 +4,34 @@ from langchain_experimental.agents import create_csv_agent
 from dotenv import load_dotenv
 import streamlit as st
 import os
+from io import StringIO  # Import StringIO from the io module
 
 def main():
-    st.set_page_config(page_title="ChatCSV")
+    load_dotenv()
+    st.set_page_config(page_title="ChatExcel")  # Changed page title
     st.header("Ask anything about your Wine Sales! 💰")
 
-    st.file_uploader("Upload your Excel file here")
+    user_excel = st.file_uploader("Upload your Excel file here", type=["xlsx", "xls", "csv"])  # Specify accepted file types
+
+    if user_excel is not None:
+        user_question = st.text_input("Ask a question about your Excel")
+        st.write(f"Question: {user_question}")
+
+        llm_gpt4 = ChatOpenAI(temperature=0, model="gpt-4-turbo")
+
+        # Read Excel file using pandas
+        if user_excel:
+            excel_data = pd.read_excel(user_excel)
+            # Skip the last row
+            excel_data = excel_data.iloc[:-1]  # Exclude the last row
+            # Convert Excel data to CSV format
+            csv_buffer = StringIO()
+            excel_data.to_csv(csv_buffer, index=False)
+            csv_buffer.seek(0)
+            csv_agent = create_csv_agent(llm=llm_gpt4, path=csv_buffer, verbose=True)  # Pass csv_buffer as path
+            if user_question is not None and user_question != "":
+                response = csv_agent.invoke(user_question)
+                st.write(f"Answer: {response['output']}")
 
 if __name__ == "__main__":
     main()
